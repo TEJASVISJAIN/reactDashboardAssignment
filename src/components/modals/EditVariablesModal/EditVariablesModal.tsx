@@ -1,0 +1,230 @@
+// @ts-ignore
+import React, { useState, useRef } from 'react';
+import { FiX, FiSearch, FiRefreshCw, FiInfo, FiChevronDown, FiCheck } from 'react-icons/fi';
+import { FaWandMagicSparkles } from 'react-icons/fa6';
+import type { SidebarItem } from '../../Sidebar/Sidebar';
+import { CATEGORIES } from '../../../data/categories';
+import { VARIABLES, type Variable } from '../../../data/variables';
+
+interface VariableTagProps {
+    name: string;
+    isRemovable?: boolean;
+    isActive?: boolean;
+    onClick?: () => void;
+    onHover?: () => void;
+    onHoverEnd?: () => void;
+    selected?: boolean;
+}
+
+const VariableTag: React.FC<VariableTagProps> = ({ name, isRemovable, isActive, onClick, onHover, onHoverEnd, selected }) => {
+    const baseClasses = "flex items-center space-x-2 py-1 px-3 rounded-lg text-sm font-medium cursor-pointer transition-colors";
+    const activeClasses = "bg-accent text-background border border-accent";
+    const selectedClasses = "ring-2 ring-accent";
+    const inactiveClasses = "bg-card text-textSecondary border border-border";
+    return (
+        <button
+            className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses} ${selected ? selectedClasses : ''}`}
+            onClick={onClick}
+            onMouseEnter={onHover}
+            onMouseLeave={onHoverEnd}
+        >
+            <span>{name}</span>
+            {isRemovable && <FaWandMagicSparkles size={14} />}
+            {isActive && <FiCheck size={16} />}
+        </button>
+    );
+};
+
+interface AccordionProps {
+    title: string;
+    children: React.ReactNode;
+}
+
+const Accordion: React.FC<AccordionProps> = ({ title, children }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    return (
+        <div className="border border-border rounded-lg">
+            <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-center p-4">
+                <h4 className="font-semibold text-text">{title}</h4>
+                <FiChevronDown className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && <div className="p-4 border-t border-border">{children}</div>}
+        </div>
+    );
+}
+
+interface EditVariablesModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  selectedSidebar: SidebarItem;
+}
+
+const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose, selectedSidebar }) => {
+  // State for selected variables (max 2, FIFO)
+  const [selected, setSelected] = useState<string[]>([]);
+  // State for Co2 Distribution context window
+  const [showContext, setShowContext] = useState(false);
+  const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
+  // State for search
+  const [search, setSearch] = useState('');
+  // Local state for category switching
+  const [localSidebar, setLocalSidebar] = useState<SidebarItem>(selectedSidebar);
+
+  const CATEGORY_MAP: Record<'category1' | 'category2' | 'category3', number> = {
+    category1: 1,
+    category2: 2,
+    category3: 3,
+  };
+
+  // Handle variable selection (max 2, FIFO)
+  const handleVariableClick = (name: string) => {
+    setSelected(prev => {
+      if (prev.includes(name)) {
+        return prev.filter(v => v !== name);
+      }
+      if (prev.length < 2) {
+        return [...prev, name];
+      }
+      // FIFO: remove first, add new
+      return [prev[1], name];
+    });
+  };
+
+  // Handle Co2 Distribution hover
+  const handleCo2Hover = () => {
+    hoverTimeout.current = setTimeout(() => setShowContext(true), 1500);
+  };
+  const handleCo2HoverEnd = () => {
+    if (hoverTimeout.current) clearTimeout(hoverTimeout.current);
+    setShowContext(false);
+  };
+
+  // Helper to check if variable is selected
+  const isSelected = (name: string) => selected.includes(name);
+
+  // Filter variables by localSidebar and search
+  let filteredVariables: Variable[] = [];
+  if (localSidebar === 'category1' || localSidebar === 'category2' || localSidebar === 'category3') {
+    filteredVariables = VARIABLES.filter((v: Variable) =>
+      v.category === CATEGORY_MAP[localSidebar] &&
+      v.name.toLowerCase().includes(search.toLowerCase())
+    );
+  } else {
+    filteredVariables = VARIABLES.filter((v: Variable) =>
+      (CATEGORIES[localSidebar] || []).includes(v.name) &&
+      v.name.toLowerCase().includes(search.toLowerCase())
+    );
+  }
+
+  return (
+    <>
+      <div 
+        className={`fixed inset-0 bg-black bg-opacity-70 z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} 
+        onClick={onClose}
+      ></div>
+      <div 
+        className={`fixed top-0 right-0 h-full w-full sm:w-full md:w-[90vw] md:max-w-md lg:w-[500px] bg-background shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col h-full">
+          <div className="p-4 md:p-6 border-b border-border flex justify-between items-center">
+            <h2 className="text-lg md:text-xl font-bold text-text">Edit Variables</h2>
+            <button onClick={onClose} className="p-2 text-textSecondary hover:text-accent rounded-full hover:bg-card">
+              <FiX size={24} />
+            </button>
+          </div>
+          {/* Main content: vertical categories on the left, variables on the right */}
+          <div className="flex flex-1 min-h-0">
+            {/* Vertical categories */}
+            <div className="flex flex-col w-48 min-w-[160px] border-r border-border py-6 px-2 bg-card">
+              <button
+                className={`mb-2 px-4 py-3 rounded-lg font-semibold text-sm text-left transition-colors ${localSidebar === 'category1' ? 'bg-accent text-background' : 'bg-background text-textSecondary hover:bg-accent/10'}`}
+                onClick={() => setLocalSidebar('category1')}
+              >
+                Variable Category 1
+              </button>
+              <button
+                className={`mb-2 px-4 py-3 rounded-lg font-semibold text-sm text-left transition-colors ${localSidebar === 'category2' ? 'bg-accent text-background' : 'bg-background text-textSecondary hover:bg-accent/10'}`}
+                onClick={() => setLocalSidebar('category2')}
+              >
+                Variable Category 2
+              </button>
+              <button
+                className={`px-4 py-3 rounded-lg font-semibold text-sm text-left transition-colors ${localSidebar === 'category3' ? 'bg-accent text-background' : 'bg-background text-textSecondary hover:bg-accent/10'}`}
+                onClick={() => setLocalSidebar('category3')}
+              >
+                Variable Category 3
+              </button>
+            </div>
+            {/* Variables and controls */}
+            <div className="flex-1 flex flex-col p-6 overflow-y-auto">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mb-4">
+                <div className="relative flex-grow">
+                  <FiSearch className="absolute top-1/2 left-4 -translate-y-1/2 text-textSecondary" />
+                  <input
+                    type="text"
+                    placeholder="Search variables"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="w-full bg-card border border-border rounded-lg pl-11 pr-4 py-2 text-text placeholder-textSecondary focus:outline-none focus:ring-1 focus:ring-accent text-sm md:text-base"
+                  />
+                </div>
+                <button className="flex items-center space-x-2 py-2 px-4 bg-card border border-border rounded-lg text-textSecondary hover:text-accent text-sm md:text-base">
+                  <FaWandMagicSparkles />
+                  <span>Autofill</span>
+                </button>
+                <button className="flex items-center space-x-2 py-2 px-4 bg-accent text-background font-semibold rounded-lg text-sm md:text-base">
+                  <FiRefreshCw />
+                  <span>Rerun</span>
+                </button>
+              </div>
+              {/* Variables list */}
+              <div className="space-y-4 relative">
+                <div className="flex flex-wrap gap-2">
+                  {filteredVariables.map((v: Variable) => (
+                    <VariableTag
+                      key={v.name}
+                      name={v.name}
+                      isRemovable={v.name === 'Carbon 1' || v.name === 'Parking Rate' || v.name === 'Variable 1'}
+                      isActive={v.name === 'Co2 Distribution' || v.name === 'Fleet sizing' || v.name === 'Border Rate' || v.name === 'Request rate'}
+                      selected={isSelected(v.name)}
+                      onClick={() => handleVariableClick(v.name)}
+                      onHover={v.name === 'Co2 Distribution' ? handleCo2Hover : undefined}
+                      onHoverEnd={v.name === 'Co2 Distribution' ? handleCo2HoverEnd : undefined}
+                    />
+                  ))}
+                </div>
+                {/* Context window for Co2 Distribution */}
+                {showContext && (
+                  <div className="absolute left-0 top-12 z-50 w-80 bg-card border border-border rounded-lg shadow-lg p-4 animate-fade-in">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <h4 className="font-semibold text-text text-sm md:text-base">Co2 Distribution</h4>
+                      <FiInfo className="text-textSecondary" />
+                    </div>
+                    <p className="text-xs md:text-sm text-textSecondary">But what truly sets Switch apart is its versatility. It can be used as a scooter, a bike, or even a skateboard, making it suitable for people of all ages. Whether you're a student, a professional, or a senior citizen, Switch adapts to your needs and lifestyle.</p>
+                  </div>
+                )}
+              </div>
+              {/* Example: show static context cards and accordions for now */}
+              <div className="bg-card p-3 md:p-4 rounded-lg border border-border mt-6">
+                <div className="flex items-center space-x-2 mb-2">
+                  <h4 className="font-semibold text-text text-sm md:text-base">Co2 Distribution</h4>
+                  <FiInfo className="text-textSecondary" />
+                </div>
+                <p className="text-xs md:text-sm text-textSecondary">But what truly sets Switch apart is its versatility. It can be used as a scooter, a bike, or even a skateboard, making it suitable for people of all ages. Whether you're a student, a professional, or a senior citizen, Switch adapts to your needs and lifestyle.</p>
+              </div>
+              <Accordion title="Primary Variables">
+                <p className="text-xs md:text-sm text-textSecondary">Content for Primary Variables</p>
+              </Accordion>
+              <Accordion title="Secondary Variables">
+                <p className="text-xs md:text-sm text-textSecondary">Content for Secondary Variables</p>
+              </Accordion>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+export default EditVariablesModal;
