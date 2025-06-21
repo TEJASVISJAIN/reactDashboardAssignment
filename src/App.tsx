@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Sidebar/Sidebar';
 import type { SidebarItem } from './components/Sidebar/Sidebar';
@@ -27,7 +27,6 @@ function App() {
       <EditVariablesModal 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
-        selectedSidebar={selectedSidebar}
       />
     </div>
   );

@@ -2,8 +2,6 @@
 import React, { useState, useRef } from 'react';
 import { FiX, FiSearch, FiRefreshCw, FiInfo, FiChevronDown, FiCheck } from 'react-icons/fi';
 import { FaWandMagicSparkles } from 'react-icons/fa6';
-import type { SidebarItem } from '../../Sidebar/Sidebar';
-import { CATEGORIES } from '../../../data/categories';
 import { VARIABLES, type Variable } from '../../../data/variables';
 
 interface VariableTagProps {
@@ -58,10 +56,9 @@ const Accordion: React.FC<AccordionProps> = ({ title, children }) => {
 interface EditVariablesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedSidebar: SidebarItem;
 }
 
-const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose, selectedSidebar }) => {
+const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose }) => {
   const categories = [
     { label: 'Variable category 1', value: 1 },
     { label: 'Variable Category 2', value: 2 },
