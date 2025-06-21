@@ -10,7 +10,7 @@ module.exports = {
         sidebar: '#101114', // sidebar background
         card: '#23262F', // card background
         border: '#353945', // border color
-        accent: '#C6FF4F', // accent (lime/green)
+        accent: '#DCFF7FFD', // accent (lime/green)
         accent2: '#F4FFB0', // lighter accent
         kpiCard: '#23262F',
         kpiBorder: '#353945',

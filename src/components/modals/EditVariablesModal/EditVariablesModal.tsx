@@ -9,28 +9,30 @@ import { VARIABLES, type Variable } from '../../../data/variables';
 interface VariableTagProps {
     name: string;
     isRemovable?: boolean;
-    isActive?: boolean;
     onClick?: () => void;
     onHover?: () => void;
     onHoverEnd?: () => void;
     selected?: boolean;
 }
 
-const VariableTag: React.FC<VariableTagProps> = ({ name, isRemovable, isActive, onClick, onHover, onHoverEnd, selected }) => {
+const VariableTag: React.FC<VariableTagProps> = ({ name, isRemovable, onClick, onHover, onHoverEnd, selected }) => {
     const baseClasses = "flex items-center space-x-2 py-1 px-3 rounded-lg text-sm font-medium cursor-pointer transition-colors";
     const activeClasses = "bg-accent text-background border border-accent";
-    const selectedClasses = "ring-2 ring-accent";
     const inactiveClasses = "bg-card text-textSecondary border border-border";
+
     return (
         <button
-            className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses} ${selected ? selectedClasses : ''}`}
+            className={`${baseClasses} ${selected ? activeClasses : inactiveClasses}`}
             onClick={onClick}
             onMouseEnter={onHover}
             onMouseLeave={onHoverEnd}
         >
             <span>{name}</span>
-            {isRemovable && <FaWandMagicSparkles size={14} />}
-            {isActive && <FiCheck size={16} />}
+            {selected ? (
+                <FiCheck size={16} />
+            ) : isRemovable ? (
+                <FaWandMagicSparkles size={14} />
+            ) : null}
         </button>
     );
 };
@@ -60,8 +62,30 @@ interface EditVariablesModalProps {
 }
 
 const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose, selectedSidebar }) => {
-  // State for selected variables (max 2, FIFO)
-  const [selected, setSelected] = useState<string[]>([]);
+  const categories = [
+    { label: 'Variable category 1', value: 1 },
+    { label: 'Variable Category 2', value: 2 },
+    { label: 'Variable Category 3', value: 3 },
+  ];
+
+  const getInitialSelectedIds = () => {
+    const initialSelected: string[] = [];
+    const activeVarNames = ['Co2 Distribution', 'Fleet sizing', 'Border Rate', 'Request rate'];
+
+    categories.forEach(cat => {
+        const categoryVariables = VARIABLES.filter(v => v.category === cat.value);
+        categoryVariables.forEach((v, i) => {
+            if (activeVarNames.includes(v.name)) {
+                initialSelected.push(`${v.name}-${cat.value}-${i}`);
+            }
+        });
+    });
+
+    return initialSelected;
+  };
+
+  // State for selected variables (max 2, FIFO), initialized with default active tags
+  const [selected, setSelected] = useState<string[]>(getInitialSelectedIds);
   // State for Co2 Distribution context window
   const [showContext, setShowContext] = useState(false);
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -69,16 +93,16 @@ const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose
   const [search, setSearch] = useState('');
 
   // Handle variable selection (max 2, FIFO)
-  const handleVariableClick = (name: string) => {
+  const handleVariableClick = (uniqueId: string) => {
     setSelected(prev => {
-      if (prev.includes(name)) {
-        return prev.filter(v => v !== name);
+      if (prev.includes(uniqueId)) {
+        return prev.filter(v => v !== uniqueId);
       }
       if (prev.length < 2) {
-        return [...prev, name];
+        return [...prev, uniqueId];
       }
       // FIFO: remove first, add new
-      return [prev[1], name];
+      return [prev[1], uniqueId];
     });
   };
 
@@ -92,14 +116,9 @@ const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose
   };
 
   // Helper to check if variable is selected
-  const isSelected = (name: string) => selected.includes(name);
+  const isSelected = (uniqueId: string) => selected.includes(uniqueId);
 
   // Group variables by category and filter by search
-  const categories = [
-    { label: 'Variable category 1', value: 1 },
-    { label: 'Variable Category 2', value: 2 },
-    { label: 'Variable Category 3', value: 3 },
-  ];
   const groupedVariables = categories.map(cat => ({
     ...cat,
     variables: VARIABLES.filter((v: Variable) => v.category === cat.value && v.name.toLowerCase().includes(search.toLowerCase())),
@@ -112,11 +131,11 @@ const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose
         onClick={onClose}
       ></div>
       <div 
-        className={`fixed top-0 right-0 h-full w-full sm:w-full md:w-[90vw] md:max-w-md lg:w-[500px] bg-background shadow-2xl z-50 transform transition-transform duration-300 ease-in-out rounded-l-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+        className={`fixed top-0 right-0 h-full w-full md:w-1/2 bg-background shadow-2xl z-50 transform transition-transform duration-300 ease-in-out rounded-2xl ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col h-full">
-          <div className="p-4 md:p-6 border-b border-border flex justify-between items-center rounded-tl-2xl">
+          <div className="p-4 md:p-6 border-b border-border flex justify-between items-center rounded-t-2xl">
             <h2 className="text-lg md:text-xl font-bold text-text">Edit Variables</h2>
             <button onClick={onClose} className="p-2 text-textSecondary hover:text-accent rounded-full hover:bg-card focus:outline-none focus:ring-2 focus:ring-accent">
               <FiX size={24} />
@@ -150,18 +169,20 @@ const EditVariablesModal: React.FC<EditVariablesModalProps> = ({ isOpen, onClose
                 <div key={cat.label}>
                   <div className="mb-2 font-semibold text-text text-base">{cat.label}</div>
                   <div className="flex flex-wrap gap-2">
-                    {cat.variables.map((v: Variable) => (
-                      <VariableTag
-                        key={v.name}
-                        name={v.name}
-                        isRemovable={v.name === 'Carbon 1' || v.name === 'Parking Rate' || v.name === 'Variable 1'}
-                        isActive={v.name === 'Co2 Distribution' || v.name === 'Fleet sizing' || v.name === 'Border Rate' || v.name === 'Request rate'}
-                        selected={isSelected(v.name)}
-                        onClick={() => handleVariableClick(v.name)}
-                        onHover={v.name === 'Co2 Distribution' ? handleCo2Hover : undefined}
-                        onHoverEnd={v.name === 'Co2 Distribution' ? handleCo2HoverEnd : undefined}
-                      />
-                    ))}
+                    {cat.variables.map((v: Variable, i: number) => {
+                      const uniqueId = `${v.name}-${cat.value}-${i}`;
+                      return (
+                        <VariableTag
+                          key={uniqueId}
+                          name={v.name}
+                          isRemovable={v.name === 'Carbon 1' || v.name === 'Parking Rate' || v.name === 'Variable 1'}
+                          selected={isSelected(uniqueId)}
+                          onClick={() => handleVariableClick(uniqueId)}
+                          onHover={v.name === 'Co2 Distribution' ? handleCo2Hover : undefined}
+                          onHoverEnd={v.name === 'Co2 Distribution' ? handleCo2HoverEnd : undefined}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               ))}

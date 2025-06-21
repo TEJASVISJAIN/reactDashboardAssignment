@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { FiHome, FiBell, FiClipboard, FiCloud, FiSettings, FiLogOut } from 'react-icons/fi';
 
 export type SidebarItem =
@@ -18,6 +19,8 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ selected, onSelect }) => {
+  const { logout } = useAuth();
+
   return (
     <nav className="bg-sidebar flex sm:flex-col flex-row justify-between sm:items-center items-stretch sm:py-6 py-0 sm:w-[80px] w-full sm:h-full h-16 border-b sm:border-b-0 sm:border-r border-border z-30">
       {/* Main icons */}
@@ -55,7 +58,10 @@ const Sidebar: React.FC<SidebarProps> = ({ selected, onSelect }) => {
       </div>
       {/* Logout icon */}
       <div className="flex sm:flex-col flex-row sm:items-center items-stretch sm:mb-2 mb-0 px-2 sm:px-0">
-        <button className="text-textSecondary hover:text-accent p-2 flex items-center justify-center">
+        <button 
+          onClick={logout}
+          className="text-textSecondary hover:text-accent p-2 flex items-center justify-center"
+        >
           <FiLogOut size={24} className="sm:w-6 sm:h-6 w-5 h-5" />
         </button>
       </div>
