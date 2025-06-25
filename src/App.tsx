@@ -14,7 +14,7 @@ function App() {
   const [selectedSidebar, setSelectedSidebar] = useState<SidebarItem>('charging');
 
   const MainLayout = () => (
-    <div className="min-h-screen bg-background text-text font-sans flex flex-col sm:grid sm:grid-cols-[80px_1fr]">
+    <div className="h-screen bg-background text-text font-sans flex flex-col sm:grid sm:grid-cols-[80px_1fr]">
       <Sidebar 
         selected={selectedSidebar} 
         onSelect={setSelectedSidebar}
